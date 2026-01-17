@@ -1,4 +1,6 @@
 import os
+import time
+import MySQLdb
 from flask import Flask, render_template, request, redirect, url_for
 from flask_mysqldb import MySQL
 
@@ -15,19 +17,28 @@ mysql = MySQL(app)
 
 # ---------------- DB INITIALIZATION ----------------
 def init_db():
-    with app.app_context():   
-        cur = mysql.connection.cursor()
-        cur.execute("""
-            CREATE TABLE IF NOT EXISTS contact_messages (
-                id INT AUTO_INCREMENT PRIMARY KEY,
-                name VARCHAR(100),
-                email VARCHAR(100),
-                message TEXT,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            );
-        """)
-        mysql.connection.commit()
-        cur.close()
+    with app.app_context():
+        retries = 10
+        while retries > 0:
+            try:
+                cur = mysql.connection.cursor()
+                cur.execute("""
+                    CREATE TABLE IF NOT EXISTS contact_messages (
+                        id INT AUTO_INCREMENT PRIMARY KEY,
+                        name VARCHAR(100),
+                        email VARCHAR(100),
+                        message TEXT,
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                    );
+                """)
+                mysql.connection.commit()
+                cur.close()
+                print("MySQL connected successfully")
+                break
+            except MySQLdb.OperationalError as e:
+                print("Waiting for MySQL...", e)
+                retries -= 1
+                time.sleep(3)
 
 # ---------------- ROUTES ----------------
 @app.route("/")
